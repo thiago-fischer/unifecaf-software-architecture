@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposta
+Aceita e implementada na Atividade 5 (17/09/2026)
 
 ## Data
 
@@ -27,7 +27,7 @@ O objetivo neste momento e pesquisar e justificar como a autenticacao poderia se
 
 ## Decisao
 
-Para o contexto atual da EasyFood, a solucao escolhida seria iniciar com autenticacao baseada em JWT.
+Para o contexto atual da EasyFood, a solucao escolhida e autenticacao baseada em JWT. A Atividade 5 implementa cadastro e login, hash de senha com bcrypt, JWT com expiracao de um dia, identificacao em /auth/me e protecao do POST /restaurants. GET /restaurants permanece publico.
 
 ## Justificativa
 
