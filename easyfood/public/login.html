@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Entre na comunidade · EasyFood</title><link rel="stylesheet" href="/css/global.css"><script type="module" src="/js/pages/auth.js"></script></head>
+<body>
+  <header class="header"><a class="brand" href="/"><span class="brand-icon" aria-hidden="true">e.</span>easyfood.</a><a class="back-link" href="/">← Voltar para explorar</a></header>
+  <main class="auth-layout">
+    <section class="auth-story"><span class="eyebrow">SABORES QUE CONECTAM</span><h1>Todo bom lugar<br>merece ser<br><em>compartilhado.</em></h1><p>Faça parte da comunidade e coloque suas descobertas gastronômicas no mapa.</p><div class="story-decoration" aria-hidden="true">✳</div><span class="story-bottom">Sua próxima descoberta está logo ali. ↗</span></section>
+    <section class="auth-panel" aria-labelledby="auth-title"><div class="auth-inner"><div class="auth-tabs" aria-label="Escolha como acessar"><button id="login-tab" type="button" class="selected" aria-pressed="true">Entrar</button><button id="register-tab" type="button" aria-pressed="false">Criar conta</button></div><h2 id="auth-title">Bom te ver por aqui.</h2><p id="auth-description" class="muted">Entre para compartilhar seus restaurantes favoritos.</p><p id="auth-notice" class="notice" role="status" hidden></p>
+      <form id="auth-form"><label id="name-field" hidden>Seu nome<input name="name" autocomplete="name" maxlength="150" placeholder="Como podemos te chamar?" disabled></label><label>E-mail<input name="email" type="email" autocomplete="email" required maxlength="150" placeholder="voce@exemplo.com"></label><label>Senha<span class="password-field"><input name="password" type="password" autocomplete="current-password" required placeholder="Digite sua senha"><button type="button" id="toggle-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></span></label><p id="auth-error" class="error" role="alert" hidden></p><button id="submit-auth" class="button primary full" type="submit">Entrar na minha conta <span aria-hidden="true">↗</span></button></form><p class="auth-footnote">Só quer dar uma olhada? <a href="/">Explore sem uma conta.</a></p></div></section>
+  </main>
+</body></html>

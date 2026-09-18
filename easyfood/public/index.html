@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Explore restaurantes · EasyFood</title>
+  <link rel="stylesheet" href="/css/global.css">
+  <script type="module" src="/js/pages/restaurants.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Pular para o conteúdo</a>
+  <header class="header"><a class="brand" href="/" aria-label="EasyFood, início"><span class="brand-icon" aria-hidden="true">e.</span>easyfood<span class="brand-dot">.</span></a><nav aria-label="Principal"><a class="nav-active" href="/">Explorar</a><span id="session"></span></nav></header>
+  <main id="main" class="container">
+    <section class="hero">
+      <div class="hero-copy"><span class="eyebrow">BOA COMIDA. NOVAS DESCOBERTAS.</span><h1>Seu próximo favorito<br>começa <em>aqui.</em></h1><p>Explore restaurantes, descubra novos sabores e compartilhe lugares que merecem uma visita.</p><a class="button dark" href="#explore">Encontrar um restaurante <span aria-hidden="true">↗</span></a></div>
+      <div class="hero-art" aria-hidden="true"><span class="art-label">FEITO PARA DESCOBRIR</span><div class="plate"><div class="food"><i></i><i></i><i></i><i></i><i></i><i></i><b></b><b></b><b></b></div></div><span class="art-stamp">novos sabores<br>boas histórias ✦</span><span class="art-caption">Um lugar à mesa para cada gosto.</span></div>
+    </section>
+    <section id="explore" class="explore" aria-labelledby="list-title">
+      <div class="section-heading"><div><span class="eyebrow">O QUE VAI SER HOJE?</span><h2 id="list-title">Explore os restaurantes</h2></div><button id="new-restaurant" class="button primary">+ Adicionar restaurante</button></div>
+      <div class="toolbar"><label class="search-label"><span class="sr-only">Buscar por nome</span><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Qual restaurante você procura?"></label><label><span class="sr-only">Categoria</span><select id="category"><option value="">Todas as categorias</option></select></label><label><span class="sr-only">Ordenar restaurantes</span><select id="sort"><option value="name">Nome: A a Z</option><option value="rating">Maior nota</option></select></label></div>
+      <div class="results-line"><p id="result-count" role="status">Buscando novos sabores…</p><button class="text-button" id="clear-filters" hidden>Limpar filtros</button></div>
+      <div id="list-state" class="empty" role="status">Carregando restaurantes…</div><button id="retry" class="button secondary" hidden>Tentar novamente</button>
+      <div id="restaurants" class="restaurant-grid" aria-busy="true"></div>
+    </section>
+  </main>
+  <footer class="footer"><a class="brand" href="/">easyfood.</a><span>Descobrir. Compartilhar. Saborear.</span><span>Um projeto feito para conectar sabores.</span></footer>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="restaurant-dialog"><form id="restaurant-form"><div class="dialog-heading"><span class="eyebrow">COMPARTILHE UMA DESCOBERTA</span><button type="button" id="close-dialog" class="icon-button" aria-label="Fechar">×</button></div><h2>Novo restaurante</h2><p class="muted">Apresente um lugar que vale a visita.</p><label>Nome do restaurante<input name="name" required maxlength="150" placeholder="Ex.: Cantina da Vila"></label><label>Categoria<input name="category" required maxlength="100" placeholder="Ex.: Italiana" list="category-suggestions"></label><datalist id="category-suggestions"></datalist><label>Nota <span class="muted">(opcional, de 0 a 5)</span><input name="rating" type="number" min="0" max="5" step="0.1" placeholder="Ex.: 4,5"></label><p id="form-error" class="error" role="alert" hidden></p><button class="button primary full" type="submit">Cadastrar restaurante</button></form></dialog>
+</body>
+</html>
