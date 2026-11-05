@@ -131,6 +131,9 @@ Mantenha o terminal em execução enquanto usa a aplicação. Para encerrar o se
 
 ## Funcionalidades da interface
 
+- Cadastro autenticado de pratos para cada restaurante.
+- Consulta pública do cardápio de cada restaurante.
+- Upload autenticado de imagens de pratos, com otimização para WebP.
 - Consulta pública de restaurantes, sem necessidade de login.
 - Busca por nome, filtro por categoria e ordenação por nome ou nota.
 - Cadastro de usuários, login e logout.
@@ -149,8 +152,27 @@ A nota do restaurante é informada no cadastro, entre 0 e 5; não representa uma
 | `GET` | `/auth/me` | Bearer token | Verificar a sessão |
 | `GET` | `/restaurants` | Pública | Listar restaurantes |
 | `POST` | `/restaurants` | Bearer token | Cadastrar restaurante |
+| `GET` | `/restaurants/:restaurantId/dishes` | Pública | Listar os pratos de um restaurante |
+| `POST` | `/restaurants/:restaurantId/dishes` | Bearer token | Cadastrar um prato no restaurante |
+| `POST` | `/dishes/:dishId/image` | Bearer token | Enviar e otimizar a imagem de um prato |
 
 O frontend utiliza essas rotas no mesmo endereço do servidor Express.
+
+## Cardápio e imagens
+
+Cada prato possui nome, descrição, preço, restaurante associado e uma imagem opcional. Para cadastrar um prato, envie um JSON para `POST /restaurants/:restaurantId/dishes`:
+
+```json
+{
+  "name": "Pizza Margherita",
+  "description": "Molho de tomate, queijo e manjericão",
+  "price": 49.90
+}
+```
+
+Para adicionar uma imagem, envie uma requisição `multipart/form-data` para `POST /dishes/:dishId/image`, usando o campo de arquivo `image`. São aceitos arquivos JPEG, PNG e WebP de até 5 MB. A API corrige a orientação quando aplicável, limita a largura a 800 px, converte o resultado para WebP com qualidade 80 e salva a versão otimizada em `easyfood/uploads/dishes/`.
+
+As imagens são expostas publicamente pelo caminho retornado em `imageUrl`, como `/uploads/dishes/arquivo.webp`. Os arquivos WebP gerados são ignorados pelo Git; a pasta é criada automaticamente pela API e possui um `.gitkeep` para preservar sua estrutura no repositório.
 
 ## Testes
 
@@ -167,4 +189,5 @@ Os testes existentes verificam cadastro, autenticação, validações e proteç�
 - [Frontend: organização e comportamento](easyfood/docs/frontend.md).
 - [Módulo de autenticação](easyfood/src/modules/auth/README.md).
 - [Decisões de arquitetura (ADRs)](easyfood/docs/adr/).
+- [Decisão sobre processamento de imagens](easyfood/docs/adr/ADR-004-processamento-de-imagens.md).
 - [Materiais das atividades](atividades/).
