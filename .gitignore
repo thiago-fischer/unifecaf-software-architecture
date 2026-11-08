@@ -1,3 +1,4 @@
 node_modules/
 .env
 easyfood/uploads/dishes/*.webp
+easyfood/uploads/profiles/*.webp

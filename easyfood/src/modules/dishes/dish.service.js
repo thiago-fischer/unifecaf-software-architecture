@@ -45,7 +45,7 @@ async function uploadDishImage(dishId, buffer) {
         throw error;
     }
 
-    const imageUrl = await imageService.optimizeImage(buffer);
+    const imageUrl = await imageService.optimizeImage(buffer, "dish");
 
     return prisma.dish.update({
         where: {

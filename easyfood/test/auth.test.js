@@ -25,7 +25,7 @@ require.cache[prismaPath] = {
                 return user;
             },
             async findUnique({ where }) {
-                return users.find(user => user.email === where.email) ?? null;
+                return users.find(user => where.email ? user.email === where.email : user.id === where.id) ?? null;
             }
         },
         restaurant: {
@@ -88,7 +88,7 @@ test("cadastro, hash, duplicidade, login e acesso autenticado", async () => {
     const authorization = `Bearer ${logged.body.token}`;
     const me = await request("/auth/me", { authorization });
     assert.equal(me.status, 200);
-    assert.deepEqual(me.body.user, { id: 1, email: credentials.email });
+    assert.deepEqual(me.body.user, { id: 1, name: credentials.name, email: credentials.email });
     const restaurant = await request("/restaurants", {
         method: "POST", authorization, body: { name: "Restaurante teste", category: "Pizza", rating: 4 }
     });

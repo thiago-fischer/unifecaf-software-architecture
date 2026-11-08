@@ -2,9 +2,10 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const prisma = require("../../database/prisma");
 const { JWT_SECRET } = require("./auth.config");
+const imageService = require("../shared/image.service");
 
 function publicUser(user) {
-    return { id: user.id, name: user.name, email: user.email };
+    return { id: user.id, name: user.name, email: user.email, imageUrl: user.imageUrl };
 }
 
 async function register({ name, email, password }) {
@@ -29,4 +30,25 @@ async function login({ email, password }) {
     return { token, user: publicUser(user) };
 }
 
-module.exports = { register, login };
+async function getUserById(id) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    return user ? publicUser(user) : null;
+}
+
+async function updateProfileImage(id, buffer) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+        const error = new Error("Usuário não encontrado");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const imageUrl = await imageService.optimizeImage(buffer, "profile");
+    const updatedUser = await prisma.user.update({
+        where: { id },
+        data: { imageUrl }
+    });
+    return publicUser(updatedUser);
+}
+
+module.exports = { register, login, getUserById, updateProfileImage };

@@ -48,4 +48,31 @@ async function login(req, res) {
     }
 }
 
-module.exports = { register, login };
+async function me(req, res) {
+    try {
+        const user = await authService.getUserById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ error: "Usuário não encontrado" });
+        }
+        return res.json({ message: "Você está autenticado!", user });
+    } catch (error) {
+        return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+}
+
+async function uploadProfileImage(req, res) {
+    if (!req.file) {
+        return res.status(400).json({ error: "Nenhuma imagem enviada" });
+    }
+
+    try {
+        const user = await authService.updateProfileImage(req.user.id, req.file.buffer);
+        return res.json({ user });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({
+            error: error.statusCode ? error.message : "Erro ao processar imagem"
+        });
+    }
+}
+
+module.exports = { register, login, me, uploadProfileImage };

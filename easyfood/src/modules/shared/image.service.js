@@ -3,9 +3,19 @@ const path = require("path");
 const fs = require("fs/promises");
 const crypto = require("crypto");
 
-async function optimizeImage(buffer) {
+const imageDirectories = {
+    dish: "dishes",
+    profile: "profiles"
+};
+
+async function optimizeImage(buffer, type) {
+    const subdirectory = imageDirectories[type];
+    if (!subdirectory) {
+        throw new Error("Tipo de imagem não suportado");
+    }
+
     const filename = `${crypto.randomUUID()}.webp`;
-    const directory = path.resolve(process.cwd(), "uploads", "dishes");
+    const directory = path.resolve(process.cwd(), "uploads", subdirectory);
 
     await fs.mkdir(directory, { recursive: true });
 
@@ -21,7 +31,7 @@ async function optimizeImage(buffer) {
         })
         .toFile(filePath);
 
-    return `/uploads/dishes/${filename}`;
+    return `/uploads/${subdirectory}/${filename}`;
 }
 
 module.exports = {
