@@ -8,7 +8,7 @@ Com as dependências, o banco e o `.env` do backend configurados, execute `npm s
 
 ## Estrutura
 
-- `public/index.html`: catálogo e modal de criação de restaurantes.
+- `public/index.html`: catálogo, cardápios, criação de restaurantes e conta do usuário.
 - `public/login.html`: login e cadastro de usuários.
 - `public/css/global.css`: estilos compartilhados e adaptações para celular.
 - `public/js/services/`: requisições HTTP e gerenciamento de sessão.
@@ -22,6 +22,8 @@ Os scripts usam módulos nativos (`type="module"`). Não há etapa de build nem 
 A consulta é pública. Busca por nome (ignorando acentos), filtro por categoria e ordenação operam na lista recebida de `/restaurants`. A nota mostrada é a informada no cadastro, não uma média de avaliações.
 
 Para criar um restaurante, o usuário precisa entrar. Após criar uma conta, a tela solicita o login. O retorno ao formulário de restaurante é preservado durante esse fluxo.
+
+Ao selecionar um restaurante, o usuário pode consultar seu cardápio. Usuários autenticados podem adicionar pratos, enviar uma imagem durante o cadastro ou atualizar a imagem de um prato existente. A conta, acessível pelo nome do usuário no cabeçalho, permite enviar ou trocar a foto de perfil.
 
 O token fica no `sessionStorage` da aba. O botão Sair remove a sessão; respostas 401 de rotas autenticadas invalidam o token. Uma sessão existente é verificada em `/auth/me` ao abrir a página inicial. Nunca são armazenadas senhas pelo frontend.
 

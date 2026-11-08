@@ -8,6 +8,30 @@ export function getSession() {
 export function saveSession(session) { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
 export function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
 
+export async function upload(path, file, { authenticated = false } = {}) {
+    const headers = {};
+    if (authenticated && getSession()?.token) headers.Authorization = `Bearer ${getSession().token}`;
+    const form = new FormData();
+    form.append('image', file);
+    let response;
+    try {
+        response = await fetch(path, { method: 'POST', headers, body: form, signal: AbortSignal.timeout(30000) });
+    } catch {
+        throw new Error('Não foi possível conectar ao servidor. Tente novamente.');
+    }
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+        if (authenticated && response.status === 401) {
+            clearSession();
+            window.dispatchEvent(new Event('session-expired'));
+        }
+        const error = new Error(authenticated && response.status === 401 ? 'Sua sessão expirou. Entre novamente para continuar.' : data?.error || 'Não foi possível enviar a imagem.');
+        error.status = response.status;
+        throw error;
+    }
+    return data;
+}
+
 export async function request(path, { method = 'GET', body, authenticated = false } = {}) {
     const headers = {};
     if (body !== undefined) headers['Content-Type'] = 'application/json';

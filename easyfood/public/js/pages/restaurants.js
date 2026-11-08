@@ -1,121 +1,45 @@
-import { listRestaurants, createRestaurant } from '../services/restaurants.js';
-import { getSession, clearSession, validateSession } from '../services/auth.js';
+import { listRestaurants, createRestaurant, listDishes, createDish, uploadDishImage } from '../services/restaurants.js';
+import { getSession, clearSession, saveSession, validateSession, uploadProfileImage } from '../services/auth.js';
 import { restaurantCard } from '../components/restaurant-card.js';
-const $ = (selector) => document.querySelector(selector);
-const dialog = $('#restaurant-dialog');
-const form = $('#restaurant-form');
-let restaurants = [];
-let listReady = false;
-let saving = false;
-let toastTimeout;
-function toast(message) {
-    $('#toast').textContent = message;
-    $('#toast').hidden = false;
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { $('#toast').hidden = true; }, 6000);
-}
+const $ = selector => document.querySelector(selector);
+const dialog = $('#restaurant-dialog'), menuDialog = $('#menu-dialog'), profileDialog = $('#profile-dialog'), form = $('#restaurant-form');
+let restaurants = [], listReady = false, saving = false, selectedRestaurant = null, toastTimeout;
+function toast(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { $('#toast').hidden = true; }, 6000); }
 function renderSession() {
-    const container = $('#session');
-    container.replaceChildren();
-    const session = getSession();
-    if (session?.token) {
-        const name = document.createElement('span');
-        name.className = 'session-name';
-        name.textContent = `Olá, ${session.user?.name || 'visitante'}`;
-        const logout = document.createElement('button');
-        logout.className = 'text-button';
-        logout.textContent = 'Sair';
-        logout.onclick = () => { clearSession(); renderSession(); toast('Você saiu da sua conta.'); };
-        container.append(name, logout);
-    } else {
-        const link = document.createElement('a');
-        link.href = '/login.html';
-        link.className = 'button secondary small';
-        link.textContent = 'Entrar / Criar conta ↗';
-        container.append(link);
-    }
+  const container = $('#session'); container.replaceChildren(); const session = getSession();
+  if (!session?.token) { const link = document.createElement('a'); link.href = '/login.html'; link.className = 'button secondary small'; link.textContent = 'Entrar / Criar conta →'; container.append(link); return; }
+  const account = document.createElement('button'); account.className = 'account-button'; account.type = 'button'; account.title = 'Abrir minha conta';
+  if (session.user?.imageUrl) { const image = document.createElement('img'); image.src = session.user.imageUrl; image.alt = ''; account.append(image); }
+  const name = document.createElement('span'); name.className = 'session-name'; name.textContent = `Olá, ${session.user?.name || 'visitante'}`; account.append(name); account.onclick = openProfile;
+  const logout = document.createElement('button'); logout.className = 'text-button'; logout.textContent = 'Sair'; logout.onclick = () => { clearSession(); renderSession(); refreshMenuAccess(); toast('Você saiu da sua conta.'); };
+  container.append(account, logout);
 }
-const normalize = (text) => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+const normalize = text => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 function renderList() {
-    if (!listReady) return;
-    const query = normalize($('#search').value.trim());
-    const category = $('#category').value;
-    const filtered = restaurants.filter(item => normalize(item.name).includes(query) && (!category || item.category === category));
-    filtered.sort($('#sort').value === 'rating' ? (a, b) => Number(b.rating || 0) - Number(a.rating || 0) : (a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-    $('#restaurants').replaceChildren(...filtered.map(restaurantCard));
-    $('#result-count').textContent = `${filtered.length} restaurante${filtered.length === 1 ? '' : 's'} encontrado${filtered.length === 1 ? '' : 's'}`;
-    $('#clear-filters').hidden = !query && !category && $('#sort').value === 'name';
-    $('#list-state').hidden = filtered.length > 0;
-    $('#list-state').textContent = restaurants.length ? 'Nenhum restaurante encontrado. Experimente outra busca ou categoria.' : 'A primeira descoberta pode ser sua. Adicione um restaurante para começar!';
+  if (!listReady) return; const query = normalize($('#search').value.trim()), category = $('#category').value;
+  const filtered = restaurants.filter(item => normalize(item.name).includes(query) && (!category || item.category === category));
+  filtered.sort($('#sort').value === 'rating' ? (a, b) => Number(b.rating || 0) - Number(a.rating || 0) : (a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  $('#restaurants').replaceChildren(...filtered.map(item => restaurantCard(item, openMenu)));
+  $('#result-count').textContent = `${filtered.length} restaurante${filtered.length === 1 ? '' : 's'} encontrado${filtered.length === 1 ? '' : 's'}`;
+  $('#clear-filters').hidden = !query && !category && $('#sort').value === 'name'; $('#list-state').hidden = filtered.length > 0;
+  $('#list-state').textContent = restaurants.length ? 'Nenhum restaurante encontrado. Experimente outra busca ou categoria.' : 'A primeira descoberta pode ser sua. Adicione um restaurante para começar!';
 }
-function updateCategories() {
-    const current = $('#category').value;
-    $('#category').replaceChildren(new Option('Todas as categorias', ''));
-    $('#category-suggestions').replaceChildren();
-    [...new Set(restaurants.map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(category => {
-        $('#category').add(new Option(category, category));
-        $('#category-suggestions').append(new Option(category, category));
-    });
-    $('#category').value = current;
+function updateCategories() { const current = $('#category').value; $('#category').replaceChildren(new Option('Todas as categorias', '')); $('#category-suggestions').replaceChildren(); [...new Set(restaurants.map(item => item.category).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'pt-BR')).forEach(category => { $('#category').add(new Option(category, category)); $('#category-suggestions').append(new Option(category, category)); }); $('#category').value = current; }
+async function load() { listReady = false; $('#retry').hidden = true; $('#list-state').hidden = false; $('#list-state').textContent = 'Carregando restaurantes…'; $('#restaurants').setAttribute('aria-busy', 'true'); try { restaurants = await listRestaurants(); listReady = true; updateCategories(); renderList(); } catch (error) { $('#list-state').textContent = error.message; $('#result-count').textContent = 'A lista não está disponível'; $('#retry').hidden = false; } finally { $('#restaurants').setAttribute('aria-busy', 'false'); } }
+function openCreate() { if (!getSession()?.token) { location.href = '/login.html?next=create'; return; } $('#form-error').hidden = true; dialog.showModal(); }
+function renderDish(dish) {
+  const article = document.createElement('article'); article.className = 'dish-card';
+  if (dish.imageUrl) { const image = document.createElement('img'); image.src = dish.imageUrl; image.alt = dish.name; article.append(image); }
+  const content = document.createElement('div'); content.className = 'dish-content'; const title = document.createElement('h3'); title.textContent = dish.name; const description = document.createElement('p'); description.textContent = dish.description; const price = document.createElement('strong'); price.textContent = Number(dish.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); content.append(title, description, price);
+  if (getSession()?.token) { const label = document.createElement('label'); label.className = 'image-upload'; label.textContent = dish.imageUrl ? 'Trocar imagem' : 'Adicionar imagem'; const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp'; input.onchange = async () => { const [file] = input.files; if (!file) return; label.textContent = 'Enviando…'; label.append(input); try { await uploadDishImage(dish.id, file); await loadMenu(); toast('Imagem do prato atualizada.'); } catch (error) { toast(error.message); label.textContent = dish.imageUrl ? 'Trocar imagem' : 'Adicionar imagem'; label.append(input); } }; label.append(input); content.append(label); }
+  article.append(content); return article;
 }
-async function load() {
-    listReady = false;
-    $('#retry').hidden = true;
-    $('#list-state').hidden = false;
-    $('#list-state').textContent = 'Carregando restaurantes…';
-    $('#restaurants').setAttribute('aria-busy', 'true');
-    try { restaurants = await listRestaurants(); listReady = true; updateCategories(); renderList(); }
-    catch (error) { $('#list-state').textContent = error.message; $('#result-count').textContent = 'A lista não está disponível'; $('#retry').hidden = false; }
-    finally { $('#restaurants').setAttribute('aria-busy', 'false'); }
-}
-function openCreate() {
-    if (!getSession()?.token) { location.href = '/login.html?next=create'; return; }
-    $('#form-error').hidden = true;
-    dialog.showModal();
-}
-$('#new-restaurant').onclick = openCreate;
-$('#close-dialog').onclick = () => { if (!saving) dialog.close(); };
-dialog.addEventListener('cancel', event => { if (saving) event.preventDefault(); });
-$('#retry').onclick = load;
-$('#search').addEventListener('input', renderList);
-$('#category').addEventListener('change', renderList);
-$('#sort').addEventListener('change', renderList);
-$('#clear-filters').onclick = () => { $('#search').value = ''; $('#category').value = ''; $('#sort').value = 'name'; renderList(); };
-window.addEventListener('session-expired', () => { renderSession(); });
-form.addEventListener('submit', async event => {
-    event.preventDefault();
-    if (saving) return;
-    const name = form.elements.name.value.trim();
-    const category = form.elements.category.value.trim();
-    if (!name || !category) { $('#form-error').textContent = 'Preencha o nome e a categoria.'; $('#form-error').hidden = false; return; }
-    const body = { name, category };
-    if (form.elements.rating.value !== '') body.rating = Number(form.elements.rating.value);
-    saving = true;
-    const submit = form.querySelector('[type="submit"]');
-    submit.disabled = true;
-    $('#close-dialog').disabled = true;
-    submit.textContent = 'Cadastrando…';
-    $('#form-error').hidden = true;
-    try {
-        const created = await createRestaurant(body);
-        restaurants.push(created);
-        listReady = true;
-        $('#search').value = '';
-        $('#category').value = '';
-        updateCategories(); renderList();
-        $('#retry').hidden = true;
-        dialog.close(); form.reset(); toast('Restaurante cadastrado. Boa descoberta!');
-    } catch (error) {
-        if (error.status === 401) { location.href = '/login.html?reason=expired&next=create'; return; }
-        $('#form-error').textContent = error.message;
-        $('#form-error').hidden = false;
-    } finally { saving = false; submit.disabled = false; $('#close-dialog').disabled = false; submit.textContent = 'Cadastrar restaurante'; }
-});
-renderSession();
-load();
-if (getSession()?.token) {
-    try {
-        await validateSession();
-        if (new URLSearchParams(location.search).get('create') === '1') { openCreate(); history.replaceState(null, '', '/'); }
-    } catch (error) { toast(error.message); }
-}
+function refreshMenuAccess() { const loggedIn = Boolean(getSession()?.token); $('#dish-editor').hidden = !loggedIn; $('#dish-login').hidden = loggedIn; }
+async function loadMenu() { if (!selectedRestaurant) return; $('#dish-list').replaceChildren(); $('#dish-state').hidden = false; $('#dish-state').textContent = 'Carregando cardápio…'; try { const dishes = await listDishes(selectedRestaurant.id); $('#dish-state').hidden = dishes.length > 0; $('#dish-state').textContent = 'Este restaurante ainda não possui pratos cadastrados.'; $('#dish-list').replaceChildren(...dishes.map(renderDish)); } catch (error) { $('#dish-state').textContent = error.message; } }
+function openMenu(restaurant) { selectedRestaurant = restaurant; $('#menu-title').textContent = restaurant.name; $('#menu-category').textContent = restaurant.category || 'Sem categoria'; refreshMenuAccess(); menuDialog.showModal(); loadMenu(); }
+function openProfile() { const user = getSession()?.user; if (!user) return; $('#profile-name').textContent = user.name || 'Sua conta'; $('#profile-email').textContent = user.email || ''; const preview = $('#profile-preview'); preview.src = user.imageUrl || ''; preview.alt = user.imageUrl ? `Foto de ${user.name}` : ''; preview.hidden = !user.imageUrl; $('#profile-error').hidden = true; profileDialog.showModal(); }
+$('#new-restaurant').onclick = openCreate; $('#close-dialog').onclick = () => { if (!saving) dialog.close(); }; $('#close-menu').onclick = () => menuDialog.close(); $('#close-profile').onclick = () => profileDialog.close(); dialog.addEventListener('cancel', event => { if (saving) event.preventDefault(); }); $('#retry').onclick = load; $('#search').addEventListener('input', renderList); $('#category').addEventListener('change', renderList); $('#sort').addEventListener('change', renderList); $('#clear-filters').onclick = () => { $('#search').value = ''; $('#category').value = ''; $('#sort').value = 'name'; renderList(); }; window.addEventListener('session-expired', () => { renderSession(); refreshMenuAccess(); });
+form.addEventListener('submit', async event => { event.preventDefault(); if (saving) return; const name = form.elements.name.value.trim(), category = form.elements.category.value.trim(); if (!name || !category) { $('#form-error').textContent = 'Preencha o nome e a categoria.'; $('#form-error').hidden = false; return; } const body = { name, category }; if (form.elements.rating.value !== '') body.rating = Number(form.elements.rating.value); saving = true; const submit = form.querySelector('[type="submit"]'); submit.disabled = true; $('#close-dialog').disabled = true; submit.textContent = 'Cadastrando…'; $('#form-error').hidden = true; try { const created = await createRestaurant(body); restaurants.push(created); listReady = true; $('#search').value = ''; $('#category').value = ''; updateCategories(); renderList(); dialog.close(); form.reset(); toast('Restaurante cadastrado. Boa descoberta!'); } catch (error) { if (error.status === 401) { location.href = '/login.html?reason=expired&next=create'; return; } $('#form-error').textContent = error.message; $('#form-error').hidden = false; } finally { saving = false; submit.disabled = false; $('#close-dialog').disabled = false; submit.textContent = 'Cadastrar restaurante'; } });
+$('#dish-form').addEventListener('submit', async event => { event.preventDefault(); if (!selectedRestaurant) return; const dishForm = event.currentTarget, submit = dishForm.querySelector('[type="submit"]'), name = dishForm.elements.name.value.trim(), description = dishForm.elements.description.value.trim(), price = Number(dishForm.elements.price.value); if (!name || !description || !Number.isFinite(price) || price <= 0) { $('#dish-error').textContent = 'Preencha nome, descrição e um preço maior que zero.'; $('#dish-error').hidden = false; return; } submit.disabled = true; submit.textContent = 'Adicionando…'; $('#dish-error').hidden = true; try { const dish = await createDish(selectedRestaurant.id, { name, description, price }); const [file] = dishForm.elements.image.files; if (file) await uploadDishImage(dish.id, file); dishForm.reset(); await loadMenu(); toast('Prato adicionado ao cardápio.'); } catch (error) { $('#dish-error').textContent = error.message; $('#dish-error').hidden = false; } finally { submit.disabled = false; submit.textContent = 'Adicionar ao cardápio'; } });
+$('#profile-form').addEventListener('submit', async event => { event.preventDefault(); const profileForm = event.currentTarget, [file] = profileForm.elements.image.files; if (!file) return; const submit = profileForm.querySelector('[type="submit"]'); submit.disabled = true; submit.textContent = 'Salvando…'; $('#profile-error').hidden = true; try { const { user } = await uploadProfileImage(file); saveSession({ ...getSession(), user }); renderSession(); profileDialog.close(); profileForm.reset(); toast('Foto de perfil atualizada.'); } catch (error) { $('#profile-error').textContent = error.message; $('#profile-error').hidden = false; } finally { submit.disabled = false; submit.textContent = 'Salvar foto'; } });
+renderSession(); load(); if (getSession()?.token) { try { const { user } = await validateSession(); saveSession({ ...getSession(), user }); renderSession(); if (new URLSearchParams(location.search).get('create') === '1') { openCreate(); history.replaceState(null, '', '/'); } } catch (error) { toast(error.message); } }

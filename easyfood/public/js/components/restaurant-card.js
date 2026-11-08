@@ -1,6 +1,9 @@
-export function restaurantCard(restaurant) {
+export function restaurantCard(restaurant, onOpen) {
     const card = document.createElement('article');
     card.className = 'restaurant-card';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', `Ver cardápio de ${restaurant.name || 'restaurante'}`);
     const art = document.createElement('div');
     const name = String(restaurant.name || 'Restaurante');
     const hue = [...String(restaurant.category || name)].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 4;
@@ -24,5 +27,9 @@ export function restaurantCard(restaurant) {
     rating.append(note);
     content.append(category, title, rating);
     card.append(art, content);
+    card.addEventListener('click', () => onOpen?.(restaurant));
+    card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen?.(restaurant); }
+    });
     return card;
 }
