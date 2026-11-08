@@ -1,22 +1,24 @@
 const prisma = require("../../database/prisma");
 const emailService = require("../shared/email.service");
+const activityService = require("../shared/activity.service");
 
 async function listRestaurants() {
     return prisma.restaurant.findMany();
 }
 
-async function createRestaurant(data) {
+async function createRestaurant(data, user) {
     const restaurant = await prisma.restaurant.create({
         data: {
             name: data.name,
             category: data.category,
-            rating: data.rating || 0
+            rating: data.rating || 0,
+            ownerId: user.id
         }
     });
 
     try {
         await emailService.sendEmail({
-            to: process.env.EMAIL_TO,
+            to: user.email,
             toName: restaurant.name,
             subject: `Bem-vindo à EasyFood, ${restaurant.name}!`,
             header: `Olá, ${restaurant.name}!`,
@@ -28,6 +30,18 @@ async function createRestaurant(data) {
     }
 
     try {
+        await activityService.log(
+            "RESTAURANT_CREATED",
+            `Restaurante ${restaurant.name} criado pelo usuário ${user.id}`
+        );
+    } catch (error) {
+        console.error("Erro ao registrar atividade:", error.message);
+    }
+
+    try {
+        if (!process.env.EMAIL_TO) {
+            throw new Error("EMAIL_TO não foi definido");
+        }
         await emailService.sendEmail({
             to: process.env.EMAIL_TO,
             toName: "Comercial EasyFood",

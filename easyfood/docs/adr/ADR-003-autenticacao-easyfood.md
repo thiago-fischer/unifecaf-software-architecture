@@ -1,4 +1,4 @@
-# ADR-003 - Planejamento de autenticacao da EasyFood
+# ADR-003 - Autenticacao da EasyFood
 
 ## Status
 
@@ -14,9 +14,7 @@ Equipe EasyFood
 
 ## Contexto
 
-A EasyFood foi organizada em camadas e esta preparada para receber novos modulos. Um novo dominio possivel e autenticacao, representado pela pasta src/modules/auth.
-
-O objetivo neste momento e pesquisar e justificar como a autenticacao poderia se encaixar na arquitetura criada, sem tornar obrigatoria a implementacao completa do login.
+A EasyFood possui operacoes publicas de consulta e operacoes de alteracao que precisam identificar o usuario responsavel. O modulo `src/modules/auth` deve permitir cadastro, login e consulta da sessao sem expor senhas, alem de fornecer uma identidade confiavel para as regras de propriedade dos restaurantes.
 
 ## Alternativas consideradas
 
@@ -28,6 +26,8 @@ O objetivo neste momento e pesquisar e justificar como a autenticacao poderia se
 ## Decisao
 
 Para o contexto atual da EasyFood, a solucao escolhida e autenticacao baseada em JWT. A Atividade 5 implementa cadastro e login, hash de senha com bcrypt, JWT com expiracao de um dia, identificacao em /auth/me e protecao do POST /restaurants. GET /restaurants permanece publico.
+
+O JWT tambem identifica o proprietario nas operacoes de cardapio. Autenticacao e autorizacao sao tratadas separadamente: possuir um token valido permite criar um restaurante, mas somente o usuario cujo id corresponde ao `ownerId` pode alterar os pratos daquele restaurante.
 
 ## Justificativa
 
@@ -41,6 +41,7 @@ Para o contexto atual da EasyFood, a solucao escolhida e autenticacao baseada em
 - Mantem a arquitetura simples.
 - Facilita o entendimento do fluxo de autenticacao.
 - Combina bem com APIs REST.
+- Permite aplicar autorizacao por recurso sem aceitar ids de usuario enviados pelo cliente.
 - Pode evoluir futuramente para integracao com provedores externos.
 
 ## Consequencias negativas / trade-offs

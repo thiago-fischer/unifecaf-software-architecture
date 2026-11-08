@@ -47,3 +47,9 @@ dialog input[type="file"]::file-selector-button{border:0;border-radius:6px;backg
   .dialog-heading{top:-18px;padding-top:18px;margin-top:-18px}
   dialog input[type="file"]::file-selector-button{display:block;margin:0 0 6px;padding:8px 10px}
 }
+
+.dish-category{display:block;color:var(--green);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.dish-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.dish-actions button{border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--green);font:inherit;font-size:12px;font-weight:700;padding:8px 10px}
+.dish-actions button:hover{background:var(--lime)}
+.dish-actions .danger{color:#a83e28}

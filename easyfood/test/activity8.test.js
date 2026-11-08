@@ -6,8 +6,9 @@ const jwt = require("jsonwebtoken");
 process.env.JWT_SECRET = "chave-exclusiva-dos-testes-da-atividade-8";
 
 const users = [{ id: 1, name: "Aluno", email: "aluno@easyfood.com", password: "hash", imageUrl: null }];
-const restaurants = [{ id: 1, name: "Pizzaria" }];
-const dishes = [{ id: 1, name: "Pizza", description: "Queijo", price: 40, restaurantId: 1, imageUrl: null }];
+const restaurants = [{ id: 1, name: "Pizzaria", ownerId: 1 }];
+const dishes = [{ id: 1, name: "Pizza", category: "Pizza", description: "Queijo", price: 40, restaurantId: 1, imageUrl: null }];
+const activities = [];
 
 const prismaPath = require.resolve("../src/database/prisma");
 require.cache[prismaPath] = {
@@ -31,6 +32,14 @@ require.cache[prismaPath] = {
             }
         },
         dish: {
+            async create({ data }) {
+                const dish = { id: dishes.length + 1, imageUrl: null, ...data };
+                dishes.push(dish);
+                return dish;
+            },
+            async findMany({ where }) {
+                return dishes.filter(dish => dish.restaurantId === where.restaurantId);
+            },
             async findUnique({ where }) {
                 return dishes.find(dish => dish.id === where.id) ?? null;
             },
@@ -38,6 +47,17 @@ require.cache[prismaPath] = {
                 const dish = dishes.find(item => item.id === where.id);
                 Object.assign(dish, data);
                 return dish;
+            },
+            async delete({ where }) {
+                const index = dishes.findIndex(dish => dish.id === where.id);
+                return dishes.splice(index, 1)[0];
+            }
+        },
+        activity: {
+            async create({ data }) {
+                const activity = { id: activities.length + 1, ...data };
+                activities.push(activity);
+                return activity;
             }
         }
     }
@@ -66,8 +86,8 @@ after(async () => {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
 
-function token() {
-    return jwt.sign({ sub: 1, email: users[0].email }, process.env.JWT_SECRET, { expiresIn: "1d" });
+function token(userId = 1) {
+    return jwt.sign({ sub: userId, email: users[0].email }, process.env.JWT_SECRET, { expiresIn: "1d" });
 }
 
 function imageForm(type = "image/png") {
@@ -77,9 +97,12 @@ function imageForm(type = "image/png") {
 }
 
 async function request(path, { method = "GET", authorization, body } = {}) {
+    const headers = {};
+    if (authorization) headers.Authorization = authorization;
+    if (typeof body === "string") headers["Content-Type"] = "application/json";
     const response = await fetch(`${baseUrl}${path}`, {
         method,
-        headers: authorization ? { Authorization: authorization } : undefined,
+        headers,
         body
     });
     return { status: response.status, body: await response.json() };
@@ -113,4 +136,40 @@ test("atualiza a imagem de um prato e informa prato inexistente", async () => {
         method: "POST", authorization: `Bearer ${token()}`, body: imageForm()
     });
     assert.equal(missing.status, 404);
+});
+
+test("oferece CRUD de pratos somente ao proprietário do restaurante", async () => {
+    const authorization = `Bearer ${token()}`;
+    const created = await request("/restaurants/1/dishes", {
+        method: "POST",
+        authorization,
+        body: JSON.stringify({ name: "Lasanha", category: "Massas", description: "Molho artesanal", price: 35 })
+    });
+    assert.equal(created.status, 201);
+    assert.equal(created.body.category, "Massas");
+
+    const found = await request(`/dishes/${created.body.id}`);
+    assert.equal(found.status, 200);
+
+    const updated = await request(`/dishes/${created.body.id}`, {
+        method: "PUT",
+        authorization,
+        body: JSON.stringify({ name: "Lasanha especial", category: "Massas", description: "Molho artesanal", price: 39 })
+    });
+    assert.equal(updated.status, 200);
+    assert.equal(updated.body.name, "Lasanha especial");
+
+    const forbidden = await request(`/dishes/${created.body.id}`, {
+        method: "DELETE",
+        authorization: `Bearer ${token(2)}`
+    });
+    assert.equal(forbidden.status, 403);
+
+    const removed = await fetch(`${baseUrl}/dishes/${created.body.id}`, {
+        method: "DELETE",
+        headers: { Authorization: authorization }
+    });
+    assert.equal(removed.status, 204);
+    assert.ok(activities.some(activity => activity.action === "DISH_CREATED"));
+    assert.ok(activities.some(activity => activity.action === "DISH_DELETED"));
 });

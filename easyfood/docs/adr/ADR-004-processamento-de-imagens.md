@@ -34,4 +34,6 @@ O projeto possui baixo volume inicial de imagens, já conta com a infraestrutura
 
 O serviço compartilhado recebe o tipo da imagem (`dish` ou `profile`) e define o diretório de armazenamento internamente. Assim, os módulos de pratos e autenticação reutilizam a mesma otimização com Sharp sem conhecer detalhes de arquivos ou repetir essa lógica.
 
+Imagens de perfil só podem ser atribuídas ao usuário identificado pelo JWT. Imagens de pratos só podem ser alteradas pelo proprietário do restaurante ao qual o prato pertence. A autorização acontece antes do processamento para evitar criar arquivos para requisições proibidas.
+
 Serverless não é inadequado; apenas não é a alternativa que melhor atende às necessidades atuais da EasyFood.

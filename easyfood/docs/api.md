@@ -52,22 +52,47 @@ O usuário é obtido apenas do JWT. Uma tentativa sem token retorna `401`; sem a
 | Método | Rota | Protegida | Resultado |
 | --- | --- | --- | --- |
 | GET | `/restaurants` | Não | Lista restaurantes |
-| POST | `/restaurants` | Sim | Cria restaurante |
+| POST | `/restaurants` | Sim | Cria restaurante pertencente ao usuário autenticado |
 | GET | `/restaurants/:restaurantId/dishes` | Não | Lista pratos do restaurante |
 | POST | `/restaurants/:restaurantId/dishes` | Sim | Cria prato associado ao restaurante |
+| GET | `/dishes/:dishId` | Não | Consulta um prato |
+| PUT | `/dishes/:dishId` | Sim | Atualiza um prato |
+| DELETE | `/dishes/:dishId` | Sim | Exclui um prato |
 | POST | `/dishes/:dishId/image` | Sim | Envia a imagem de um prato |
+
+Ao criar um restaurante, o usuário autenticado torna-se seu proprietário. Somente ele pode criar, editar e excluir pratos ou alterar suas imagens. Tentativas de outro usuário retornam `403 Forbidden`.
+
+O restaurante retornado contém `ownerId`. Esse valor é definido pela API a partir do JWT; um `ownerId` enviado no corpo é ignorado.
 
 Para criar um prato, envie JSON:
 
 ```json
 {
   "name": "Pizza Margherita",
+  "category": "Pizzas",
   "description": "Molho de tomate, queijo e manjericão",
   "price": 49.9
 }
 ```
 
 O envio de imagem de prato também usa `multipart/form-data` e o campo `image`. Um prato inexistente retorna `404`.
+
+## E-mails e registro de atividades
+
+Após cadastrar um restaurante, a API tenta enviar uma mensagem de boas-vindas ao e-mail do proprietário e um aviso comercial para `EMAIL_TO`. Essas tarefas são secundárias: uma falha no provedor de e-mail não desfaz o restaurante criado.
+
+A criação de restaurantes e a criação, atualização, exclusão ou troca de imagem de pratos geram registros internos em `Activity`. Não existe uma rota pública para consultar essas atividades. Assim como o e-mail, uma falha nesse registro é reportada no console sem invalidar a operação principal.
+
+## Respostas de erro relevantes
+
+| Status | Situação |
+| --- | --- |
+| `400 Bad Request` | Dados obrigatórios ou identificadores inválidos |
+| `401 Unauthorized` | Token ausente, inválido ou expirado |
+| `403 Forbidden` | Usuário autenticado não é proprietário do restaurante |
+| `404 Not Found` | Usuário, restaurante ou prato não encontrado |
+| `409 Conflict` | E-mail já cadastrado |
+| `413 Payload Too Large` | Imagem acima do limite de 5 MB |
 
 ## Arquivos de imagem
 

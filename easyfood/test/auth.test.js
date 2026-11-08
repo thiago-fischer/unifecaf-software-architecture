@@ -35,6 +35,9 @@ require.cache[prismaPath] = {
                 restaurants.push(restaurant);
                 return restaurant;
             }
+        },
+        activity: {
+            async create({ data }) { return { id: 1, ...data }; }
         }
     }
 };
@@ -93,6 +96,7 @@ test("cadastro, hash, duplicidade, login e acesso autenticado", async () => {
         method: "POST", authorization, body: { name: "Restaurante teste", category: "Pizza", rating: 4 }
     });
     assert.equal(restaurant.status, 201);
+    assert.equal(restaurant.body.ownerId, registered.body.id);
     assert.equal((await request("/restaurants")).status, 200);
 });
 

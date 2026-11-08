@@ -34,10 +34,12 @@ Agora a aplicacao precisa manter os restaurantes entre reinicializacoes do servi
 
 Adotar PostgreSQL como banco de dados relacional da EasyFood e utilizar Prisma como camada de acesso ao banco.
 
+O schema evoluiu para persistir `User`, `Restaurant`, `Dish` e `Activity`. Cada restaurante referencia obrigatoriamente seu proprietario por `ownerId`; cada prato referencia um restaurante; e atividades registram eventos relevantes sem bloquear a operacao principal caso o registro de auditoria falhe.
+
 ## Justificativa
 
 - PostgreSQL oferece persistencia real para os dados da aplicacao.
-- O modelo de restaurantes possui estrutura clara, adequada para tabelas relacionais.
+- Os relacionamentos entre usuarios, restaurantes e pratos exigem integridade referencial, adequada a tabelas relacionais.
 - A EasyFood podera evoluir para novos relacionamentos, como cardapios, usuarios e pedidos.
 - Prisma reduz a necessidade de escrever SQL diretamente no codigo da API.
 - Migrations ajudam a registrar a evolucao do schema do banco.

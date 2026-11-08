@@ -23,8 +23,12 @@ A consulta é pública. Busca por nome (ignorando acentos), filtro por categoria
 
 Para criar um restaurante, o usuário precisa entrar. Após criar uma conta, a tela solicita o login. O retorno ao formulário de restaurante é preservado durante esse fluxo.
 
-Ao selecionar um restaurante, o usuário pode consultar seu cardápio. Usuários autenticados podem adicionar pratos, enviar uma imagem durante o cadastro ou atualizar a imagem de um prato existente. A conta, acessível pelo nome do usuário no cabeçalho, permite enviar ou trocar a foto de perfil.
+Ao selecionar um restaurante, qualquer visitante pode consultar o cardápio. Apenas o proprietário pode adicionar, editar ou excluir pratos e enviar ou trocar suas imagens. Para os demais usuários, a interface oculta os controles de alteração e informa que o gerenciamento é exclusivo do proprietário. A API repete essa verificação; esconder os controles não é usado como mecanismo de segurança.
+
+O formulário de prato exige nome, categoria, descrição e preço maior que zero. A edição permite alterar esses quatro campos. A exclusão pede confirmação antes de chamar a API.
+
+A conta, acessível pelo nome do usuário no cabeçalho, permite enviar ou trocar a foto de perfil.
 
 O token fica no `sessionStorage` da aba. O botão Sair remove a sessão; respostas 401 de rotas autenticadas invalidam o token. Uma sessão existente é verificada em `/auth/me` ao abrir a página inicial. Nunca são armazenadas senhas pelo frontend.
 
-Campos de nome e categoria são obrigatórios. A nota opcional aceita valores de 0 a 5, com uma casa decimal; se omitida, o backend usa zero. Os formulários exibem os erros da API e bloqueiam envios duplicados enquanto aguardam a resposta.
+No cadastro de restaurante, nome e categoria são obrigatórios. A nota opcional aceita valores de 0 a 5, com uma casa decimal; se omitida, o backend usa zero. Os formulários exibem os erros da API e bloqueiam envios duplicados enquanto aguardam a resposta.

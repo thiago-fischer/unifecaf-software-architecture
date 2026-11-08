@@ -1,6 +1,6 @@
 # Arquitetura de Software — EasyFood
 
-Repositório das atividades de Arquitetura de Software da UniFECAF. O projeto **EasyFood** permite consultar e cadastrar restaurantes, com cadastro de usuários e autenticação JWT.
+Repositório das atividades de Arquitetura de Software da UniFECAF. O projeto **EasyFood** permite consultar e cadastrar restaurantes e seus cardápios, com cadastro de usuários, autenticação JWT e autorização baseada na propriedade do restaurante.
 
 O backend utiliza Node.js, Express, PostgreSQL e Prisma. O frontend utiliza HTML, CSS e JavaScript vanilla, com módulos nativos do navegador.
 
@@ -77,10 +77,18 @@ Se o `.env` já existir, ajuste o arquivo existente sem sobrescrever suas config
 ```dotenv
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/easyfood"
 JWT_SECRET="substitua-por-uma-chave-longa-e-aleatoria"
+EMAIL_API_KEY="sua-chave-do-resend"
+EMAIL_FROM="onboarding@resend.dev"
+EMAIL_FROM_NAME="EasyFood"
+EMAIL_TO="email-do-comercial@exemplo.com"
 ```
 
 - `DATABASE_URL`: substitua usuário, senha, host, porta e nome do banco pelos valores do seu PostgreSQL. A URL acima é apenas um exemplo de configuração local.
 - `JWT_SECRET`: chave usada para assinar os tokens de autenticação. Para gerar um valor aleatório, execute `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` e copie o resultado para essa variável.
+- `EMAIL_API_KEY`, `EMAIL_FROM` e `EMAIL_FROM_NAME`: credenciais e remetente usados pelo Resend.
+- `EMAIL_TO`: endereço que recebe o aviso comercial quando um restaurante é cadastrado. O e-mail de boas-vindas é enviado ao endereço do proprietário autenticado.
+
+Se as configurações de e-mail estiverem ausentes ou o provedor falhar, o restaurante continua sendo cadastrado e o erro é registrado no console.
 
 O arquivo `.env` está no `.gitignore` e não deve ser versionado.
 
@@ -101,13 +109,24 @@ npx prisma generate
 npx prisma migrate deploy
 ```
 
-Opcionalmente, insira três restaurantes de exemplo:
+Se você já possuía dados anteriores à migração de propriedade, a inclusão de `ownerId` e da categoria obrigatória dos pratos exige associar os registros antigos manualmente. Em um banco exclusivamente local, também é possível apagar os dados e reaplicar todas as migrations com `npx prisma migrate reset`; esse comando é destrutivo e nunca deve ser executado em produção.
+
+Opcionalmente, crie um usuário de demonstração e três restaurantes pertencentes a ele:
 
 ```sh
 npm run seed
 ```
 
 Execute o seed apenas uma vez se quiser evitar repetições: o modelo atual não possui uma restrição de unicidade para o nome dos restaurantes, então novas execuções podem duplicar os exemplos.
+
+Credenciais criadas pelo seed:
+
+```text
+E-mail: demo@easyfood.com
+Senha: easyfood123
+```
+
+Use essas credenciais somente no ambiente local de desenvolvimento.
 
 ### 5. Iniciar a aplicação
 
@@ -131,14 +150,14 @@ Mantenha o terminal em execução enquanto usa a aplicação. Para encerrar o se
 
 ## Funcionalidades da interface
 
-- Cadastro autenticado de pratos para cada restaurante.
+- Cadastro, edição e exclusão de pratos pelo proprietário do restaurante.
 - Consulta pública do cardápio de cada restaurante.
-- Upload autenticado de imagens de pratos, com otimização para WebP.
+- Upload de imagens de pratos pelo proprietário, com otimização para WebP.
 - Upload autenticado de foto de perfil, com otimização para WebP.
 - Consulta pública de restaurantes, sem necessidade de login.
 - Busca por nome, filtro por categoria e ordenação por nome ou nota.
 - Cadastro de usuários, login e logout.
-- Cadastro de restaurantes para usuários autenticados, por meio de um modal.
+- Cadastro de restaurantes para usuários autenticados, que passam a ser seus proprietários.
 - Validação de formulários e mensagens de carregamento, sucesso e erro.
 - Layout adaptado para computadores e celulares.
 
@@ -155,18 +174,22 @@ A nota do restaurante é informada no cadastro, entre 0 e 5; não representa uma
 | `GET` | `/restaurants` | Pública | Listar restaurantes |
 | `POST` | `/restaurants` | Bearer token | Cadastrar restaurante |
 | `GET` | `/restaurants/:restaurantId/dishes` | Pública | Listar os pratos de um restaurante |
-| `POST` | `/restaurants/:restaurantId/dishes` | Bearer token | Cadastrar um prato no restaurante |
-| `POST` | `/dishes/:dishId/image` | Bearer token | Enviar e otimizar a imagem de um prato |
+| `POST` | `/restaurants/:restaurantId/dishes` | Proprietário | Cadastrar um prato no restaurante |
+| `GET` | `/dishes/:dishId` | Pública | Consultar um prato |
+| `PUT` | `/dishes/:dishId` | Proprietário | Atualizar um prato |
+| `DELETE` | `/dishes/:dishId` | Proprietário | Excluir um prato |
+| `POST` | `/dishes/:dishId/image` | Proprietário | Enviar e otimizar a imagem de um prato |
 
-O frontend utiliza essas rotas no mesmo endereço do servidor Express.
+As rotas indicadas como “Proprietário” exigem um Bearer token e verificam se o usuário autenticado é o dono do restaurante. Outro usuário recebe `403 Forbidden`. O frontend utiliza essas rotas no mesmo endereço do servidor Express.
 
 ## Cardápio e imagens
 
-Cada prato possui nome, descrição, preço, restaurante associado e uma imagem opcional. Para cadastrar um prato, envie um JSON para `POST /restaurants/:restaurantId/dishes`:
+Cada prato possui nome, categoria, descrição, preço, restaurante associado e uma imagem opcional. Para cadastrar um prato, envie um JSON para `POST /restaurants/:restaurantId/dishes`:
 
 ```json
 {
   "name": "Pizza Margherita",
+  "category": "Pizzas",
   "description": "Molho de tomate, queijo e manjericão",
   "price": 49.90
 }
@@ -186,7 +209,7 @@ Dentro da pasta `easyfood`, execute:
 npm test
 ```
 
-Os testes verificam cadastro, autenticação, validações, proteção de rotas e os uploads de perfil e pratos.
+Os testes verificam cadastro, autenticação, validações, propriedade dos restaurantes, CRUD de pratos, proteção de rotas e uploads de perfil e pratos.
 
 ## Documentação complementar
 
@@ -194,5 +217,6 @@ Os testes verificam cadastro, autenticação, validações, proteção de rotas 
 - [Módulo de autenticação](easyfood/src/modules/auth/README.md).
 - [Decisões de arquitetura (ADRs)](easyfood/docs/adr/).
 - [Decisão sobre processamento de imagens](easyfood/docs/adr/ADR-004-processamento-de-imagens.md).
+- [Decisão sobre propriedade e autorização](easyfood/docs/adr/ADR-005-propriedade-e-autorizacao-de-restaurantes.md).
 - [Referência completa da API](easyfood/docs/api.md).
 - [Materiais das atividades](atividades/).

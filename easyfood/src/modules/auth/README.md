@@ -27,13 +27,15 @@ npm start
 | GET | `/auth/me` | Bearer JWT | 200, mensagem e usuário atualizado |
 | POST | `/auth/me/image` | Bearer JWT | 200, atualiza a foto do usuário autenticado |
 | GET | `/restaurants` | Pública | 200, lista de restaurantes |
-| POST | `/restaurants` | Bearer JWT | 201, restaurante criado |
+| POST | `/restaurants` | Bearer JWT | 201, restaurante criado para o usuário autenticado |
 
 Cadastro: envie `{ "name": "Aluno", "email": "aluno@easyfood.com", "password": "123456" }` como JSON. Login: envie `email` e `password`. Nas rotas protegidas, use `Authorization: Bearer <token>`.
 
 Senhas são armazenadas com bcrypt (custo 10). Tokens usam HS256 e expiram em um dia. Campos obrigatórios inválidos retornam 400, e-mail duplicado retorna 409 e credenciais ou tokens inválidos retornam 401. Nome e e-mail aceitam até 150 caracteres; senhas aceitam até 72 bytes UTF-8 para evitar truncamento pelo bcrypt.
 
 O envio para `/auth/me/image` recebe o campo `image` em `multipart/form-data`. A rota aceita JPEG, PNG ou WebP de até 5 MB, converte o arquivo para WebP e retorna o usuário com `imageUrl`. A imagem fica em `uploads/profiles/` e não pode ser atribuída a outro usuário, pois o identificador vem exclusivamente do JWT.
+
+Ao cadastrar um restaurante, o id do token é gravado como `ownerId`; o cliente não escolhe o proprietário. As alterações de cardápio exigem o mesmo JWT e retornam 403 quando o restaurante pertence a outro usuário. Consulte `docs/api.md` para as rotas completas de pratos.
 
 `npm test` executa testes HTTP com bcrypt e JWT reais e persistência em memória, sem alterar o PostgreSQL.
 

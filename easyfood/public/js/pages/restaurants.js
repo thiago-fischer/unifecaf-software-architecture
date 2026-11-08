@@ -1,9 +1,17 @@
-import { listRestaurants, createRestaurant, listDishes, createDish, uploadDishImage } from '../services/restaurants.js';
+import { listRestaurants, createRestaurant, listDishes, createDish as createDishRequest, updateDish, deleteDish, uploadDishImage } from '../services/restaurants.js';
 import { getSession, clearSession, saveSession, validateSession, uploadProfileImage } from '../services/auth.js';
 import { restaurantCard } from '../components/restaurant-card.js';
 const $ = selector => document.querySelector(selector);
+const createDish = (restaurantId, body) => createDishRequest(restaurantId, { ...body, category: $('#dish-category').value.trim() });
+const dishCategoryLabel = document.createElement('label');
+dishCategoryLabel.textContent = 'Categoria';
+const dishCategoryInput = document.createElement('input');
+dishCategoryInput.id = 'dish-category'; dishCategoryInput.name = 'category'; dishCategoryInput.required = true; dishCategoryInput.maxLength = 100; dishCategoryInput.placeholder = 'Ex.: Prato principal';
+dishCategoryLabel.append(dishCategoryInput);
+$('#dish-form').insertBefore(dishCategoryLabel, $('#dish-form .form-columns'));
 const dialog = $('#restaurant-dialog'), menuDialog = $('#menu-dialog'), profileDialog = $('#profile-dialog'), form = $('#restaurant-form');
 let restaurants = [], listReady = false, saving = false, selectedRestaurant = null, toastTimeout;
+const ownsSelectedRestaurant = () => Number(selectedRestaurant?.ownerId) === Number(getSession()?.user?.id);
 function toast(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { $('#toast').hidden = true; }, 6000); }
 function renderSession() {
   const container = $('#session'); container.replaceChildren(); const session = getSession();
@@ -30,11 +38,27 @@ function openCreate() { if (!getSession()?.token) { location.href = '/login.html
 function renderDish(dish) {
   const article = document.createElement('article'); article.className = 'dish-card';
   if (dish.imageUrl) { const image = document.createElement('img'); image.src = dish.imageUrl; image.alt = dish.name; article.append(image); }
-  const content = document.createElement('div'); content.className = 'dish-content'; const title = document.createElement('h3'); title.textContent = dish.name; const description = document.createElement('p'); description.textContent = dish.description; const price = document.createElement('strong'); price.textContent = Number(dish.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); content.append(title, description, price);
-  if (getSession()?.token) { const label = document.createElement('label'); label.className = 'image-upload'; label.textContent = dish.imageUrl ? 'Trocar imagem' : 'Adicionar imagem'; const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp'; input.onchange = async () => { const [file] = input.files; if (!file) return; label.textContent = 'Enviando…'; label.append(input); try { await uploadDishImage(dish.id, file); await loadMenu(); toast('Imagem do prato atualizada.'); } catch (error) { toast(error.message); label.textContent = dish.imageUrl ? 'Trocar imagem' : 'Adicionar imagem'; label.append(input); } }; label.append(input); content.append(label); }
+  const content = document.createElement('div'); content.className = 'dish-content';
+  const category = document.createElement('span'); category.className = 'dish-category'; category.textContent = dish.category || 'Outros';
+  const title = document.createElement('h3'); title.textContent = dish.name;
+  const description = document.createElement('p'); description.textContent = dish.description;
+  const price = document.createElement('strong'); price.textContent = Number(dish.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  content.append(category, title, description, price);
+  if (ownsSelectedRestaurant()) {
+    const label = document.createElement('label'); label.className = 'image-upload'; label.textContent = dish.imageUrl ? 'Trocar imagem' : 'Adicionar imagem';
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp';
+    input.onchange = async () => { const [file] = input.files; if (!file) return; label.textContent = 'Enviando...'; label.append(input); try { await uploadDishImage(dish.id, file); await loadMenu(); toast('Imagem do prato atualizada.'); } catch (error) { toast(error.message); label.textContent = dish.imageUrl ? 'Trocar imagem' : 'Adicionar imagem'; label.append(input); } };
+    label.append(input); content.append(label);
+    const actions = document.createElement('div'); actions.className = 'dish-actions';
+    const edit = document.createElement('button'); edit.type = 'button'; edit.textContent = 'Editar'; edit.onclick = () => editDish(dish);
+    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'danger'; remove.textContent = 'Excluir'; remove.onclick = () => removeDish(dish);
+    actions.append(edit, remove); content.append(actions);
+  }
   article.append(content); return article;
 }
-function refreshMenuAccess() { const loggedIn = Boolean(getSession()?.token); $('#dish-editor').hidden = !loggedIn; $('#dish-login').hidden = loggedIn; }
+async function editDish(dish) { const name = prompt('Nome do prato:', dish.name); if (name === null) return; const category = prompt('Categoria do prato:', dish.category || 'Outros'); if (category === null) return; const description = prompt('Descrição do prato:', dish.description); if (description === null) return; const priceText = prompt('Preço do prato:', dish.price); if (priceText === null) return; try { await updateDish(dish.id, { name, category, description, price: Number(String(priceText).replace(',', '.')) }); await loadMenu(); toast('Prato atualizado.'); } catch (error) { toast(error.message); } }
+async function removeDish(dish) { if (!confirm(`Excluir "${dish.name}" do cardápio?`)) return; try { await deleteDish(dish.id); await loadMenu(); toast('Prato excluído.'); } catch (error) { toast(error.message); } }
+function refreshMenuAccess() { const loggedIn = Boolean(getSession()?.token), owner = ownsSelectedRestaurant(), message = $('#dish-login'); $('#dish-editor').hidden = !owner; message.hidden = owner; if (!loggedIn) message.innerHTML = '<a href="/login.html">Entre</a> para gerenciar o cardápio.'; else message.textContent = 'Somente o proprietário deste restaurante pode gerenciar o cardápio.'; }
 async function loadMenu() { if (!selectedRestaurant) return; $('#dish-list').replaceChildren(); $('#dish-state').hidden = false; $('#dish-state').textContent = 'Carregando cardápio…'; try { const dishes = await listDishes(selectedRestaurant.id); $('#dish-state').hidden = dishes.length > 0; $('#dish-state').textContent = 'Este restaurante ainda não possui pratos cadastrados.'; $('#dish-list').replaceChildren(...dishes.map(renderDish)); } catch (error) { $('#dish-state').textContent = error.message; } }
 function openMenu(restaurant) { selectedRestaurant = restaurant; $('#menu-title').textContent = restaurant.name; $('#menu-category').textContent = restaurant.category || 'Sem categoria'; refreshMenuAccess(); menuDialog.showModal(); loadMenu(); }
 function openProfile() { const user = getSession()?.user; if (!user) return; $('#profile-name').textContent = user.name || 'Sua conta'; $('#profile-email').textContent = user.email || ''; const preview = $('#profile-preview'); preview.src = user.imageUrl || ''; preview.alt = user.imageUrl ? `Foto de ${user.name}` : ''; preview.hidden = !user.imageUrl; $('#profile-error').hidden = true; profileDialog.showModal(); }
